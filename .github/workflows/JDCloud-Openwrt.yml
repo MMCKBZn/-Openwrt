@@ -1,4 +1,4 @@
-name: JDCloud-ImmortalWrt
+name: JDCloud-Openwrt
 
 on:
   workflow_dispatch:
@@ -10,9 +10,9 @@ permissions:
   contents: write
 
 env:
-  REPO_URL: https://github.com/MMCKBZn/immortalwrt.git
+  REPO_URL: https://github.com/MMCKBZn/-Openwrt.git
   REPO_BRANCH: openwrt-25.12
-  LIBWRT_REPO: https://github.com/LiBwrt/openwrt-6.x.git
+  LIBWRT_REPO: https://github.com/MMCKBZn/openwrt-6.x.git
   LIBWRT_BRANCH: 25.12-nss
   CONFIG_FILE: configs/JDCloud.config
   GENERAL_CONFIG_FILE: configs/General.config
@@ -63,27 +63,6 @@ jobs:
         VERSION_INFO=$(git show -s --date=short --format="作者: %an<br/>时间: %cd<br/>内容: %s<br/>hash: %H")
         echo "VERSION_INFO=$VERSION_INFO" >> $GITHUB_ENV
         echo "VERSION_KERNEL=待定" >> $GITHUB_ENV
-
-    - name: Merge LibWrt NSS source
-      run: |
-        cd $OPENWRT_PATH
-        git config user.email "github-actions[bot]@users.noreply.github.com"
-        git config user.name "github-actions[bot]"
-        echo "=== 开始合并 LibWrt ($LIBWRT_BRANCH) ==="
-        git remote add libwrt $LIBWRT_REPO
-        git fetch libwrt $LIBWRT_BRANCH
-        git merge --no-commit --no-ff -X theirs libwrt/$LIBWRT_BRANCH --allow-unrelated-histories || {
-          echo "⚠️ 检测到未自动解决的冲突（多为 add/add 文件冲突），将使用 LibWrt 版本覆盖"
-          echo "冲突文件列表："
-          git diff --name-only --diff-filter=U
-          git diff --name-only --diff-filter=U | xargs -r git checkout --theirs
-          git add .
-          git commit -m "Merge LibWrt NSS branch (forced theirs resolution)"
-        }
-        echo "✅ LibWrt 源码合并完成"
-        VERSION_KERNEL=$(grep -oP '^LINUX_VERSION-\K[0-9]+\.[0-9]+(\.[0-9]+)?' include/kernel-version.mk 2>/dev/null || echo "unknown")
-        echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
-        echo "内核版本: $VERSION_KERNEL"
 
     - name: Remove APK cheatsheet notice
       run: |
