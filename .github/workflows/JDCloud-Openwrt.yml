@@ -3,8 +3,6 @@ name: JDCloud-Openwrt
 on:
   workflow_dispatch:
   workflow_call:
-  # schedule:
-  #   - cron: 0 20 * * *
 
 permissions:
   contents: write
@@ -73,7 +71,6 @@ jobs:
         cp -a /tmp/libwrt/target/linux/qualcommax $OPENWRT_PATH/target/linux/qualcommax
         echo ">>> 合并 NSS 内核模块与相关软件包..."
         mkdir -p $OPENWRT_PATH/package/kernel
-        # 复制所有 qca-nss 和 qca-ssdk 开头的内核模块目录
         for dir in qca-nss-* qca-ssdk*; do
           if [ -d "/tmp/libwrt/package/kernel/$dir" ]; then
             echo "  复制 package/kernel/$dir"
@@ -81,7 +78,6 @@ jobs:
             cp -a /tmp/libwrt/package/kernel/$dir $OPENWRT_PATH/package/kernel/$dir
           fi
         done
-        # 如果有其他 NSS 相关的用户态工具，例如 package/network/utils/nss-diag，也一并复制
         if [ -d "/tmp/libwrt/package/network/utils/nss-diag" ]; then
           echo "  复制 package/network/utils/nss-diag"
           mkdir -p $OPENWRT_PATH/package/network/utils
@@ -158,8 +154,10 @@ jobs:
         cd $OPENWRT_PATH
         echo "CONFIG_PACKAGE_luci-app-ledtrig-rssi=y" >> .config
         echo "CONFIG_PACKAGE_luci-app-ledtrig-switch=y" >> .config
+        make defconfig
+        make download -j$(nproc)
 
-    - name: Set hostname to ImmortalWrt
+    - name: Set hostname to Openwrt
       run: |
         cd $OPENWRT_PATH
         sed -i 's/.*CONFIG_TARGET_HOSTNAME=.*/CONFIG_TARGET_HOSTNAME="Openwrt"/' .config
@@ -286,17 +284,13 @@ jobs:
         cd $OPENWRT_PATH
         echo -e "$(nproc) thread compile"
 
-        # 删除可能残留的坏补丁
         BAD_PATCH="target/linux/qualcommax/patches-6.12/0300-arm64-dts-qcom-ipq6018-add-pwm.patch"
         if [ -f "$BAD_PATCH" ]; then
           rm -f "$BAD_PATCH"
           echo "⚠️ 已移除残留补丁"
         fi
 
-        # 内核准备
         make target/linux/prepare V=s -j$(nproc) || make target/linux/prepare V=s -j1
-
-        # 正式编译固件（不再修改任何设备树文件）
         make -j$(nproc) V=s || make -j1 V=s
 
         if [ -z "$(find bin/targets -type f \( -name '*.bin' -o -name '*.img.gz' -o -name '*.ubi' \) | head -1)" ]; then
@@ -349,18 +343,19 @@ jobs:
       with:
         name: ${{ env.DATE }} for ${{ env.FIRMWARE_TAG }}
         allowUpdates: true
-        tag: ${{ steps.set_tag.outputs.RELEASE_TAG }}
+        tag: ${{ env.FIRMWARE_TAG }}-${{ env.FILE_DATE }}
         token: ${{ secrets.GITHUB_TOKEN }}
         artifacts: "${{ env.FIRMWARE_PATH }}/*sysupgrade*,${{ env.FIRMWARE_PATH }}/*factory*,${{ env.FIRMWARE_PATH }}/Arthur.Athena*"
         body: |
           **This is OpenWrt Firmware for JDCloud**
           ### 📒 固件信息
+          - 系统基础：Openwrt25.12，叠加 openwrt-6.x 的 NSS 与设备树
           - 这是开启全功能NSS的6.12内核固件，默认主题为Aurora,集成了Docker
-          - 💻 这是 JDCloud 平台使用的 OpenWrt 25.12.3固件
-          - ⚽ 固件源码: ${{ env.REPO_URL }}
-          - 💝 源码分支: ${{ env.REPO_BRANCH }}
-          - 🌐 默认地址: **192.168.2.1**
-          - 🔑 默认密码: none
+          - 💻 平台：JDCloud (IPQ60xx)
+          - ⚽ 系统源码：${{ env.REPO_URL }}
+          - 💝 系统分支：${{ env.REPO_BRANCH }}
+          - 🌐 默认地址：**192.168.2.1**
+          - 🔑 默认密码：none
         generateReleaseNotes: false
         immutableCreate: false
         makeLatest: legacy
