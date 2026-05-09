@@ -247,8 +247,7 @@ jobs:
       run: |
         cd "$OPENWRT_PATH"
         mkdir -p files/root
-        wget -P files/root/ https://downloads.openwrt.org/releases/packages-25.12/aarch64_cortex-a53/base/libmbedtls21-3.6.6-r1.apk
-
+        wget -P files/root/ https://downloads.openwrt.org/releases/25.12.3/packages/aarch64_cortex-a53/base/libmbedtls21-3.6.6-r2.apk
         mkdir -p files/etc/uci-defaults
         cat > files/etc/uci-defaults/98-install-mbedtls << 'EOF'
         #!/bin/sh
