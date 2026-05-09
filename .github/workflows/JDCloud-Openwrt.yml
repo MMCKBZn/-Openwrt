@@ -84,6 +84,15 @@ jobs:
           rm -rf $OPENWRT_PATH/package/network/utils/nss-diag
           cp -a /tmp/libwrt/package/network/utils/nss-diag $OPENWRT_PATH/package/network/utils/nss-diag
         fi
+        # 复制 JDCloud 等设备的 WiFi 校准固件包（修复缺失 ipq-wifi-jdcloud_re-ss-01 的错误）
+        if [ -d "/tmp/libwrt/package/firmware/ipq-wifi" ]; then
+          echo "  复制 package/firmware/ipq-wifi"
+          mkdir -p $OPENWRT_PATH/package/firmware
+          rm -rf $OPENWRT_PATH/package/firmware/ipq-wifi
+          cp -a /tmp/libwrt/package/firmware/ipq-wifi $OPENWRT_PATH/package/firmware/ipq-wifi
+        else
+          echo "⚠️ 未找到 ipq-wifi 固件包，可能需手动补充"
+        fi
         rm -rf /tmp/libwrt
         echo "✅ NSS 与设备树源码合并完成"
 
@@ -109,7 +118,6 @@ jobs:
       run: |
         KERNEL_CFG=$(ls $OPENWRT_PATH/target/linux/qualcommax/ipq60xx/config-* 2>/dev/null | head -1)
         if [ -f "$KERNEL_CFG" ]; then
-          # 修复 6.12 内核新增的 Netfilter 选项未配置导致的 syncconfig 错误
           echo "# CONFIG_NF_CONNTRACK_DSCPREMARK_EXT is not set" >> "$KERNEL_CFG"
           echo "✅ 已修复缺失的内核配置选项 (NF_CONNTRACK_DSCPREMARK_EXT)"
         else
@@ -247,7 +255,8 @@ jobs:
       run: |
         cd "$OPENWRT_PATH"
         mkdir -p files/root
-        wget -P files/root/ https://downloads.openwrt.org/releases/25.12.3/packages/aarch64_cortex-a53/base/libmbedtls21-3.6.6-r2.apk
+        wget -P files/root/ https://downloads.openwrt.org/releases/packages-25.12/aarch64_cortex-a53/base/libmbedtls21-3.6.6-r1.apk
+
         mkdir -p files/etc/uci-defaults
         cat > files/etc/uci-defaults/98-install-mbedtls << 'EOF'
         #!/bin/sh
