@@ -105,6 +105,17 @@ jobs:
           echo "⚠️ 警告：未找到内核配置文件，CPU 统计可能异常"
         fi
 
+    - name: Fix missing kernel config options(修复缺失的内核配置项)
+      run: |
+        KERNEL_CFG=$(ls $OPENWRT_PATH/target/linux/qualcommax/ipq60xx/config-* 2>/dev/null | head -1)
+        if [ -f "$KERNEL_CFG" ]; then
+          # 修复 6.12 内核新增的 Netfilter 选项未配置导致的 syncconfig 错误
+          echo "# CONFIG_NF_CONNTRACK_DSCPREMARK_EXT is not set" >> "$KERNEL_CFG"
+          echo "✅ 已修复缺失的内核配置选项 (NF_CONNTRACK_DSCPREMARK_EXT)"
+        else
+          echo "⚠️ 未找到内核配置文件，跳过修复"
+        fi
+
     - name: Generate Variables(生成变量)
       run: |
         cp $CONFIG_FILE $OPENWRT_PATH/.config
