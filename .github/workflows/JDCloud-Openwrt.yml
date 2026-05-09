@@ -14,7 +14,7 @@ env:
   LIBWRT_BRANCH: 25.12-nss
   CONFIG_FILE: configs/JDCloud.config
   GENERAL_CONFIG_FILE: configs/General.config
-  DIY_SCRIPT: scripts/Roc-script.sh
+  DIY_SCRIPT: scripts/script.sh
   CLASH_KERNEL: amd64
   FIRMWARE_TAG: JDCloud
   TZ: Asia/Shanghai
@@ -198,20 +198,6 @@ jobs:
         chmod +x files/etc/rc.local
         echo "✅ 已添加 rc.local 辅助清理脚本"
 
-    - name: Force default WiFi SSID via uci-defaults
-      run: |
-        cd "$OPENWRT_PATH"
-        mkdir -p files/etc/uci-defaults
-        cat > files/etc/uci-defaults/99-custom-wifi << 'EOF'
-        #!/bin/sh
-        uci set wireless.@wifi-iface[0].ssid='ImmortalWrt'
-        uci set wireless.@wifi-iface[1].ssid='ImmortalWrt_5G'
-        uci commit wireless
-        wifi reload
-        EOF
-        chmod +x files/etc/uci-defaults/99-custom-wifi
-        echo "✅ WiFi SSID覆盖脚本已添加"
-
     - name: Add custom NSS version LuCI page
       run: |
         cd $OPENWRT_PATH
@@ -269,12 +255,12 @@ jobs:
         cd "$OPENWRT_PATH"
         mkdir -p files/etc/apk/repositories.d
         cat > files/etc/apk/repositories.d/distfeeds.list << 'EOF'
-        https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/25.12.2/targets/qualcommax/ipq60xx/packages/packages.adb
-        https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/25.12.2/packages/aarch64_cortex-a53/packages/packages.adb
-        https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/25.12.2/packages/aarch64_cortex-a53/luci/packages.adb
-        https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/25.12.2/packages/aarch64_cortex-a53/routing/packages.adb
-        https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/25.12.2/packages/aarch64_cortex-a53/telephony/packages.adb
-        https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/25.12.2/packages/aarch64_cortex-a53/video/packages.adb
+        https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/25.12.3/targets/qualcommax/ipq60xx/packages/packages.adb
+        https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/25.12.3/packages/aarch64_cortex-a53/packages/packages.adb
+        https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/25.12.3/packages/aarch64_cortex-a53/luci/packages.adb
+        https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/25.12.3/packages/aarch64_cortex-a53/routing/packages.adb
+        https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/25.12.3/packages/aarch64_cortex-a53/telephony/packages.adb
+        https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/25.12.3/packages/aarch64_cortex-a53/video/packages.adb
         EOF
         echo "✅ 软件源已写入 /etc/apk/repositories.d/distfeeds.list"
 
@@ -349,9 +335,9 @@ jobs:
         body: |
           **This is OpenWrt Firmware for JDCloud**
           ### 📒 固件信息
-          - 系统基础：Openwrt25.12，叠加 openwrt-6.x 的 NSS 与设备树
+          - 系统基础：Openwrt25.12
           - 这是开启全功能NSS的6.12内核固件，默认主题为Aurora,集成了Docker
-          - 💻 平台：JDCloud (IPQ60xx)
+          - 💻 平台：JDCloud亚瑟
           - ⚽ 系统源码：${{ env.REPO_URL }}
           - 💝 系统分支：${{ env.REPO_BRANCH }}
           - 🌐 默认地址：**192.168.2.1**
