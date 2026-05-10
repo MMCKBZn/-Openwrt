@@ -295,19 +295,19 @@ jobs:
     - name: Organize Files(整理文件)
       if: steps.compile.outputs.status == 'success'
       run: |
-        cd $OPENWRT_PATH/bin/targets/$DEVICE_TARGET/$DEVICE_SUBTARGET
-        cp $OPENWRT_PATH/.config Arthur.Athena.config
-        mv config.buildinfo Arthur.Athena.config.buildinfo
-        MANIFEST=$(find . -maxdepth 1 -name "*.manifest" -print -quit)
-        if [ -n "$MANIFEST" ]; then
-            mv "$MANIFEST" Arthur.Athena.manifest
-        else
-            echo "⚠️ 未找到 manifest 文件，跳过"
-        fi
-        mv -f $OPENWRT_PATH/bin/packages/*/*/*.apk packages 2>/dev/null || true
-        tar -zcf Arthur.Athena.Packages.tar.gz packages 2>/dev/null || true
-        rm -rf packages feeds.buildinfo version.buildinfo sha256sums profiles.json
-        echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+       cd $OPENWRT_PATH/bin/targets/$DEVICE_TARGET/$DEVICE_SUBTARGET
+       cp $OPENWRT_PATH/.config Arthur.Athena.config
+       [ -f config.buildinfo ] && mv config.buildinfo Arthur.Athena.config.buildinfo || echo "⚠️ config.buildinfo 不存在，跳过"
+       MANIFEST=$(find . -maxdepth 1 -name "*.manifest" -print -quit)
+       if [ -n "$MANIFEST" ]; then
+           mv "$MANIFEST" Arthur.Athena.manifest
+       else
+          echo "⚠️ 未找到 manifest 文件，跳过"
+       fi
+       mv -f $OPENWRT_PATH/bin/packages/*/*/*.apk packages 2>/dev/null || true
+       tar -zcf Arthur.Athena.Packages.tar.gz packages 2>/dev/null || true
+       rm -rf packages feeds.buildinfo version.buildinfo sha256sums profiles.json
+       echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
 
     - name: Verify Firmware Files Exist(验证固件文件是否存在)
       if: steps.compile.outputs.status == 'success'
