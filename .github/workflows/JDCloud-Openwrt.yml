@@ -170,14 +170,10 @@ jobs:
 
     - name: Download DL Package(下载DL软件包)
       run: |
-        cd $OPENWRT_PATH
-        # 合并你的两个配置文件，生成初始 .config
-        cat $GITHUB_WORKSPACE/$CONFIG_FILE $GITHUB_WORKSPACE/$GENERAL_CONFIG_FILE > .config
-        # 设置 TERM 变量，防止 menuconfig 报 "Error opening terminal"
-        export TERM=xterm
-        # 用 olddefconfig 补全依赖，保留已有选项
-        make olddefconfig
-        make download -j$(nproc)
+       cd $OPENWRT_PATH
+       cat $GITHUB_WORKSPACE/$CONFIG_FILE $GITHUB_WORKSPACE/$GENERAL_CONFIG_FILE > .config
+       yes "" | make oldconfig
+       make download -j$(nproc)
 
     - name: Set hostname to Openwrt
       run: |
