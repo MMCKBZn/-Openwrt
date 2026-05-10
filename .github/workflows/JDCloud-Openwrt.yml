@@ -8,8 +8,10 @@ permissions:
   contents: write
 
 env:
-  REPO_URL: https://github.com/MMCKBZn/Openwrt25.12/tree/v25.12.3.git
+env:
+  REPO_URL: https://github.com/MMCKBZn/Openwrt25.12.git
   REPO_BRANCH: openwrt-25.12
+  REPO_TAG: v25.12.3
   LIBWRT_REPO: https://github.com/MMCKBZn/openwrt-6.x.git
   LIBWRT_BRANCH: 25.12-nss
   CONFIG_FILE: configs/JDCloud.config
