@@ -8,7 +8,6 @@ permissions:
   contents: write
 
 env:
-env:
   REPO_URL: https://github.com/MMCKBZn/Openwrt25.12.git
   REPO_BRANCH: openwrt-25.12
   REPO_TAG: v25.12.3
