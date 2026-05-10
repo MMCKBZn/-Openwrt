@@ -171,9 +171,11 @@ jobs:
     - name: Download DL Package(下载DL软件包)
       run: |
         cd $OPENWRT_PATH
-        # 合并你的两个配置文件，生成初始 .config（使用绝对路径）
+        # 合并你的两个配置文件，生成初始 .config
         cat $GITHUB_WORKSPACE/$CONFIG_FILE $GITHUB_WORKSPACE/$GENERAL_CONFIG_FILE > .config
-        # 用 olddefconfig 补全依赖，但绝不删除已有配置
+        # 设置 TERM 变量，防止 menuconfig 报 "Error opening terminal"
+        export TERM=xterm
+        # 用 olddefconfig 补全依赖，保留已有选项
         make olddefconfig
         make download -j$(nproc)
 
