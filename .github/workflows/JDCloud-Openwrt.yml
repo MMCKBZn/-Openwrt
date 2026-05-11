@@ -59,16 +59,17 @@ jobs:
         git clone --depth 1 -b $REPO_BRANCH --single-branch $REPO_URL /mnt/openwrt
         cd /mnt/openwrt
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-        VERSION_INFO=$(git show -s --date=short --format="作者: %an<br/>时间: %cd<br/>内容: %s<br/>hash: %H")
+        # 避免 <> 被解释为重定向，改用转义或去掉标签
+        VERSION_INFO="$(git show -s --date=short --format='作者: %an, 时间: %cd, 内容: %s, hash: %H')"
         echo "VERSION_INFO=$VERSION_INFO" >> $GITHUB_ENV
         echo "VERSION_KERNEL=待定" >> $GITHUB_ENV
 
-        - name: Merge NSS and Device Tree from libwrt(合并设备树与NSS驱动，保留官方内核)
-        run: |
+    - name: Merge NSS and Device Tree from libwrt(合并驱动与设备树，保留官方内核)
+      run: |
         echo ">>> 克隆 libwrt 仓库..."
         git clone --depth 1 -b $LIBWRT_BRANCH --single-branch $LIBWRT_REPO /tmp/libwrt
 
-        echo ">>> 合并高通NSS驱动与内核模块..."
+        echo ">>> 合并高通 NSS 驱动与内核模块..."
         mkdir -p $OPENWRT_PATH/package/kernel
         for dir in qca-nss-* qca-ssdk* ath11k*; do
           if [ -d "/tmp/libwrt/package/kernel/$dir" ]; then
@@ -78,8 +79,10 @@ jobs:
           fi
         done
 
-        echo ">>> 合并固件包（WiFi & NSS 固件）..."
+        echo ">>> 合并固件包（WiFi 与 NSS 固件）..."
         if [ -d "/tmp/libwrt/package/firmware" ]; then
+          # 确保目标目录存在
+          mkdir -p $OPENWRT_PATH/package/firmware
           cp -a /tmp/libwrt/package/firmware/* $OPENWRT_PATH/package/firmware/
           echo "✅ 固件包合并完成"
         fi
@@ -99,6 +102,7 @@ jobs:
 
         rm -rf /tmp/libwrt
         echo "✅ NSS 驱动、固件与设备树已合并，官方内核保持不变！"
+
     - name: Remove APK cheatsheet notice
       run: |
         rm -f "$OPENWRT_PATH/package/base-files/files/etc/profile.d/apk-cheatsheet.sh"
@@ -172,10 +176,10 @@ jobs:
 
     - name: Download DL Package(下载DL软件包)
       run: |
-       cd $OPENWRT_PATH
-       cat $GITHUB_WORKSPACE/$CONFIG_FILE $GITHUB_WORKSPACE/$GENERAL_CONFIG_FILE > .config
-       yes "" | make oldconfig
-       make download -j$(nproc)
+        cd $OPENWRT_PATH
+        cat $GITHUB_WORKSPACE/$CONFIG_FILE $GITHUB_WORKSPACE/$GENERAL_CONFIG_FILE > .config
+        yes "" | make oldconfig
+        make download -j$(nproc)
 
     - name: Set hostname to Openwrt
       run: |
@@ -297,19 +301,19 @@ jobs:
     - name: Organize Files(整理文件)
       if: steps.compile.outputs.status == 'success'
       run: |
-       cd $OPENWRT_PATH/bin/targets/$DEVICE_TARGET/$DEVICE_SUBTARGET
-       cp $OPENWRT_PATH/.config Arthur.Athena.config
-       [ -f config.buildinfo ] && mv config.buildinfo Arthur.Athena.config.buildinfo || echo "⚠️ config.buildinfo 不存在，跳过"
-       MANIFEST=$(find . -maxdepth 1 -name "*.manifest" -print -quit)
-       if [ -n "$MANIFEST" ]; then
-           mv "$MANIFEST" Arthur.Athena.manifest
-       else
-          echo "⚠️ 未找到 manifest 文件，跳过"
-       fi
-       mv -f $OPENWRT_PATH/bin/packages/*/*/*.apk packages 2>/dev/null || true
-       tar -zcf Arthur.Athena.Packages.tar.gz packages 2>/dev/null || true
-       rm -rf packages feeds.buildinfo version.buildinfo sha256sums profiles.json
-       echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+        cd $OPENWRT_PATH/bin/targets/$DEVICE_TARGET/$DEVICE_SUBTARGET
+        cp $OPENWRT_PATH/.config Arthur.Athena.config
+        [ -f config.buildinfo ] && mv config.buildinfo Arthur.Athena.config.buildinfo || echo "⚠️ config.buildinfo 不存在，跳过"
+        MANIFEST=$(find . -maxdepth 1 -name "*.manifest" -print -quit)
+        if [ -n "$MANIFEST" ]; then
+            mv "$MANIFEST" Arthur.Athena.manifest
+        else
+            echo "⚠️ 未找到 manifest 文件，跳过"
+        fi
+        mv -f $OPENWRT_PATH/bin/packages/*/*/*.apk packages 2>/dev/null || true
+        tar -zcf Arthur.Athena.Packages.tar.gz packages 2>/dev/null || true
+        rm -rf packages feeds.buildinfo version.buildinfo sha256sums profiles.json
+        echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
 
     - name: Verify Firmware Files Exist(验证固件文件是否存在)
       if: steps.compile.outputs.status == 'success'
