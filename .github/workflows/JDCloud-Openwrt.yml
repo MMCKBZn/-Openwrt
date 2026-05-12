@@ -177,14 +177,17 @@ jobs:
     - name: Download DL Package(下载软件包并清理繁体依赖)
       run: |
         cd $OPENWRT_PATH
+        export TERM=xterm
+
         cat $GITHUB_WORKSPACE/$CONFIG_FILE $GITHUB_WORKSPACE/$GENERAL_CONFIG_FILE > .config
         echo "CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" >> .config
 
-        make olddefconfig
+        # 使用 yes "" 自动回答默认值，完全避免启动 menuconfig
+        yes "" | make oldconfig
 
         echo ">>> 清理繁体中文语言包..."
         sed -i 's/^CONFIG_PACKAGE_\(luci-i18n.*-zh-tw\)=.*$/# CONFIG_PACKAGE_\1 is not set/' .config
-        make olddefconfig
+        yes "" | make oldconfig
 
         echo "=== 检查简体中文包状态 ==="
         if grep -q "^CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" .config; then
