@@ -64,45 +64,47 @@ jobs:
         echo "VERSION_INFO=$VERSION_INFO" >> $GITHUB_ENV
         echo "VERSION_KERNEL=待定" >> $GITHUB_ENV
 
-    - name: Merge NSS and Device Tree from libwrt(合并驱动与设备树，保留官方内核)
-      run: |
-        echo ">>> 克隆 libwrt 仓库..."
-        git clone --depth 1 -b $LIBWRT_BRANCH --single-branch $LIBWRT_REPO /tmp/libwrt
+     - name: Merge NSS and Device Tree from libwrt(合并驱动与设备信息，保留官方内核补丁)
+       run: |
+         echo ">>> 克隆 libwrt 仓库..."
+         git clone --depth 1 -b $LIBWRT_BRANCH --single-branch $LIBWRT_REPO /tmp/libwrt
 
-        echo ">>> 合并高通 NSS 驱动与内核模块..."
-        mkdir -p $OPENWRT_PATH/package/kernel
-        for dir in qca-nss-* qca-ssdk* ath11k*; do
+         echo ">>> 备份官方内核补丁目录..."
+         mv $OPENWRT_PATH/target/linux/qualcommax/patches-6.12 /tmp/patches-6.12-official
+
+         echo ">>> 合并 target/linux/qualcommax (设备树、image、profiles 等)..."
+         rm -rf $OPENWRT_PATH/target/linux/qualcommax
+         cp -a /tmp/libwrt/target/linux/qualcommax $OPENWRT_PATH/target/linux/qualcommax
+
+         echo ">>> 恢复官方内核补丁..."
+         rm -rf $OPENWRT_PATH/target/linux/qualcommax/patches-6.12
+         mv /tmp/patches-6.12-official $OPENWRT_PATH/target/linux/qualcommax/patches-6.12
+
+         echo ">>> 合并高通 NSS 驱动与内核模块..."
+         mkdir -p $OPENWRT_PATH/package/kernel
+         for dir in qca-nss-* qca-ssdk* ath11k*; do
           if [ -d "/tmp/libwrt/package/kernel/$dir" ]; then
-            echo "  复制 package/kernel/$dir"
             rm -rf $OPENWRT_PATH/package/kernel/$dir
             cp -a /tmp/libwrt/package/kernel/$dir $OPENWRT_PATH/package/kernel/$dir
           fi
-        done
+         done
 
-        echo ">>> 合并固件包（WiFi 与 NSS 固件）..."
-        if [ -d "/tmp/libwrt/package/firmware" ]; then
-          # 确保目标目录存在
+         echo ">>> 合并固件包（WiFi 与 NSS 固件）..."
+         if [ -d "/tmp/libwrt/package/firmware" ]; then
           mkdir -p $OPENWRT_PATH/package/firmware
           cp -a /tmp/libwrt/package/firmware/* $OPENWRT_PATH/package/firmware/
-          echo "✅ 固件包合并完成"
-        fi
+         fi
 
-        echo ">>> 合并设备树文件 (DTS)..."
-        mkdir -p $OPENWRT_PATH/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/
-        cp /tmp/libwrt/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/*jdcloud* $OPENWRT_PATH/target/linux/qualcommax/files/arch/arm64/boot/dts/qcom/
-        echo "✅ 设备树文件合并完成"
-
-        echo ">>> 合并其他必要的用户态工具 (如 nss-diag)..."
-        if [ -d "/tmp/libwrt/package/network/utils/nss-diag" ]; then
+         echo ">>> 合并其他必要的用户态工具 (如 nss-diag)..."
+         if [ -d "/tmp/libwrt/package/network/utils/nss-diag" ]; then
           mkdir -p $OPENWRT_PATH/package/network/utils
           rm -rf $OPENWRT_PATH/package/network/utils/nss-diag
           cp -a /tmp/libwrt/package/network/utils/nss-diag $OPENWRT_PATH/package/network/utils/nss-diag
-          echo "  复制 package/network/utils/nss-diag"
-        fi
+         fi
 
-        rm -rf /tmp/libwrt
-        echo "✅ NSS 驱动、固件与设备树已合并，官方内核保持不变！"
-
+         rm -rf /tmp/libwrt
+         echo "✅ 合并完成：使用官方内核补丁，其余设备信息与驱动来自 libwrt"
+         
     - name: Remove APK cheatsheet notice
       run: |
         rm -f "$OPENWRT_PATH/package/base-files/files/etc/profile.d/apk-cheatsheet.sh"
