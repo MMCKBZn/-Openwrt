@@ -59,13 +59,12 @@ jobs:
         git clone --depth 1 -b $REPO_BRANCH --single-branch $REPO_URL /mnt/openwrt
         cd /mnt/openwrt
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-        # 避免 <> 被解释为重定向，改用转义或去掉标签
         VERSION_INFO="$(git show -s --date=short --format='作者: %an, 时间: %cd, 内容: %s, hash: %H')"
         echo "VERSION_INFO=$VERSION_INFO" >> $GITHUB_ENV
         echo "VERSION_KERNEL=待定" >> $GITHUB_ENV
 
-     - name: Merge NSS and Device Tree from libwrt(合并驱动与设备信息，保留官方内核补丁)
-       run: |
+    - name: Merge NSS and Device Tree from libwrt(合并驱动与设备信息，保留官方内核补丁)
+      run: |
         echo ">>> 克隆 libwrt 仓库..."
         git clone --depth 1 -b $LIBWRT_BRANCH --single-branch $LIBWRT_REPO /tmp/libwrt
 
@@ -104,7 +103,7 @@ jobs:
 
         rm -rf /tmp/libwrt
         echo "✅ 合并完成：使用官方内核补丁，其余设备信息与驱动来自 libwrt"
-         
+
     - name: Remove APK cheatsheet notice
       run: |
         rm -f "$OPENWRT_PATH/package/base-files/files/etc/profile.d/apk-cheatsheet.sh"
@@ -135,7 +134,6 @@ jobs:
 
     - name: Generate Variables(生成变量)
       run: |
-        # 直接从 CONFIG_FILE 提取设备信息，避免调用 make defconfig 提前丢弃自定义包
         DEVICE_TARGET=$(grep CONFIG_TARGET_BOARD $GITHUB_WORKSPACE/$CONFIG_FILE | awk -F '"' '{print $2}')
         DEVICE_SUBTARGET=$(grep CONFIG_TARGET_SUBTARGET $GITHUB_WORKSPACE/$CONFIG_FILE | awk -F '"' '{print $2}')
         echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
@@ -190,7 +188,6 @@ jobs:
         if ! grep -q "CONFIG_TARGET_HOSTNAME" .config; then
           echo 'CONFIG_TARGET_HOSTNAME="Openwrt"' >> .config
         fi
-        # 不再执行 make defconfig，避免重置配置
 
     - name: Set Docker to nftables mode and clean legacy rules
       run: |
