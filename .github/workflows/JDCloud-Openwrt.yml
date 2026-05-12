@@ -174,11 +174,34 @@ jobs:
         cd $OPENWRT_PATH
         $GITHUB_WORKSPACE/$DIY_SCRIPT
 
-    - name: Download DL Package(下载DL软件包)
+    - name: Download DL Package(下载软件包并清理繁体依赖)
       run: |
         cd $OPENWRT_PATH
         cat $GITHUB_WORKSPACE/$CONFIG_FILE $GITHUB_WORKSPACE/$GENERAL_CONFIG_FILE > .config
-        yes "" | make oldconfig
+        echo "CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" >> .config
+
+        make olddefconfig
+
+        echo ">>> 清理繁体中文语言包..."
+        sed -i 's/^CONFIG_PACKAGE_\(luci-i18n.*-zh-tw\)=.*$/# CONFIG_PACKAGE_\1 is not set/' .config
+        make olddefconfig
+
+        echo "=== 检查简体中文包状态 ==="
+        if grep -q "^CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" .config; then
+          echo "✅ 简体中文基础包已确认安装"
+        else
+          echo "❌ 简体中文基础包丢失！"
+          exit 1
+        fi
+
+        echo "=== 确认无繁体包残留 ==="
+        if grep -q "luci-i18n.*-zh-tw" .config; then
+          echo "⚠️ 仍有繁体包残留："
+          grep "luci-i18n.*-zh-tw" .config
+        else
+          echo "✅ 无繁体包残留"
+        fi
+
         make download -j$(nproc)
 
     - name: Set hostname to Openwrt
