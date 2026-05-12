@@ -174,19 +174,16 @@ jobs:
         cd $OPENWRT_PATH
         $GITHUB_WORKSPACE/$DIY_SCRIPT
 
-    - name: Download DL Package(下载软件包并清理繁体依赖)
+    - name: Download DL Package(下载软件包并确保简体中文)
       run: |
         cd $OPENWRT_PATH
         export TERM=xterm
 
         cat $GITHUB_WORKSPACE/$CONFIG_FILE $GITHUB_WORKSPACE/$GENERAL_CONFIG_FILE > .config
         echo "CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" >> .config
+        echo "CONFIG_LUCI_LANG_zh-cn=y" >> .config
 
-        # 使用 yes "" 自动回答默认值，完全避免启动 menuconfig
-        yes "" | make oldconfig
-
-        echo ">>> 清理繁体中文语言包..."
-        sed -i 's/^CONFIG_PACKAGE_\(luci-i18n.*-zh-tw\)=.*$/# CONFIG_PACKAGE_\1 is not set/' .config
+        # 使用 yes "" 自动回答默认值，避免启动 menuconfig
         yes "" | make oldconfig
 
         echo "=== 检查简体中文包状态 ==="
@@ -195,14 +192,6 @@ jobs:
         else
           echo "❌ 简体中文基础包丢失！"
           exit 1
-        fi
-
-        echo "=== 确认无繁体包残留 ==="
-        if grep -q "luci-i18n.*-zh-tw" .config; then
-          echo "⚠️ 仍有繁体包残留："
-          grep "luci-i18n.*-zh-tw" .config
-        else
-          echo "✅ 无繁体包残留"
         fi
 
         make download -j$(nproc)
