@@ -177,14 +177,16 @@ jobs:
     - name: Download DL Package(下载软件包并确保简体中文)
       run: |
         cd $OPENWRT_PATH
-        export TERM=xterm
+        export TERM=linux
 
         cat $GITHUB_WORKSPACE/$CONFIG_FILE $GITHUB_WORKSPACE/$GENERAL_CONFIG_FILE > .config
+        # 强制开启 LuCI 基础组件，否则语言包无法保留
+        echo "CONFIG_PACKAGE_luci=y" >> .config
         echo "CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" >> .config
         echo "CONFIG_LUCI_LANG_zh-cn=y" >> .config
 
-        # 使用 yes "" 自动回答默认值，避免启动 menuconfig
-        yes "" | make oldconfig
+        # 使用 yes "" 自动回答新选项，忽略管道破裂（无害）
+        (yes "" || true) | make oldconfig
 
         echo "=== 检查简体中文包状态 ==="
         if grep -q "^CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" .config; then
