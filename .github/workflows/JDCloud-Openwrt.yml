@@ -177,22 +177,24 @@ jobs:
     - name: Download DL Package(下载软件包并确保简体中文)
       run: |
         cd $OPENWRT_PATH
-        export TERM=linux
 
+        # 合并你的配置文件
         cat $GITHUB_WORKSPACE/$CONFIG_FILE $GITHUB_WORKSPACE/$GENERAL_CONFIG_FILE > .config
-        # 强制开启 LuCI 基础组件，否则语言包无法保留
+
+        # 强制开启 LuCI 基础组件和简体中文（防止因依赖缺失被丢弃）
         echo "CONFIG_PACKAGE_luci=y" >> .config
+        echo "CONFIG_PACKAGE_luci-base=y" >> .config
         echo "CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" >> .config
         echo "CONFIG_LUCI_LANG_zh-cn=y" >> .config
 
-        # 使用 yes "" 自动回答新选项，忽略管道破裂（无害）
-        (yes "" || true) | make oldconfig
+        # 使用 script 提供伪终端，安全执行 oldconfig（告别终端错误）
+        script -q -e -c "yes '' 2>/dev/null | make oldconfig" /dev/null
 
-        echo "=== 检查简体中文包状态 ==="
+        # 验证简体中文包是否存活
         if grep -q "^CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" .config; then
           echo "✅ 简体中文基础包已确认安装"
         else
-          echo "❌ 简体中文基础包丢失！"
+          echo "❌ 简体中文基础包丢失！请检查配置文件或手动添加 luci"
           exit 1
         fi
 
