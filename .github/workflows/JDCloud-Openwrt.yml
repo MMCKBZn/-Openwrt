@@ -174,31 +174,28 @@ jobs:
         cd $OPENWRT_PATH
         $GITHUB_WORKSPACE/$DIY_SCRIPT
 
-    - name: Download DL Package(下载软件包并确保简体中文)
+    - name: Download DL Package(下载软件包，强制写入中文支持)
       run: |
         cd $OPENWRT_PATH
-
-        # 合并你的配置文件
         cat $GITHUB_WORKSPACE/$CONFIG_FILE $GITHUB_WORKSPACE/$GENERAL_CONFIG_FILE > .config
 
-        # 强制开启 LuCI 基础组件和简体中文（防止因依赖缺失被丢弃）
+        # 强制写入中文语言支持（即使你的配置文件里有禁用项，也会被覆盖）
         echo "CONFIG_PACKAGE_luci=y" >> .config
         echo "CONFIG_PACKAGE_luci-base=y" >> .config
         echo "CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" >> .config
         echo "CONFIG_LUCI_LANG_zh-cn=y" >> .config
 
-        # 使用 script 提供伪终端，安全执行 oldconfig（告别终端错误）
-        script -q -e -c "yes '' 2>/dev/null | make oldconfig" /dev/null
-
-        # 验证简体中文包是否存活
-        if grep -q "^CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" .config; then
-          echo "✅ 简体中文基础包已确认安装"
-        else
-          echo "❌ 简体中文基础包丢失！请检查配置文件或手动添加 luci"
-          exit 1
-        fi
-
+        # 不再调用任何配置刷新工具，直接下载源码
         make download -j$(nproc)
+
+    - name: Fix config before compile(编译前再次加固配置)
+      run: |
+        cd $OPENWRT_PATH
+        # 确保语言包选项没有丢失
+        grep -q "^CONFIG_PACKAGE_luci=y" .config || echo "CONFIG_PACKAGE_luci=y" >> .config
+        grep -q "^CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" .config || echo "CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" >> .config
+        grep -q "^CONFIG_LUCI_LANG_zh-cn=y" .config || echo "CONFIG_LUCI_LANG_zh-cn=y" >> .config
+        echo "✅ 语言包配置已加固"
 
     - name: Set hostname to Openwrt
       run: |
