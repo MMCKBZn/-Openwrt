@@ -186,25 +186,32 @@ jobs:
         echo "CONFIG_TARGET_qualcommax_ipq60xx=y" >> .config
         echo "CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_jdcloud_re-ss-01=y" >> .config
 
-        # 3. 运行 defconfig 生成针对该设备的完整默认配置（非交互，无终端问题）
-        #    注意：此步骤会清空所有自定义包，只保留默认必需项。
+        # 3. 运行 defconfig 生成针对该设备的完整默认配置
         make defconfig
 
-        # 4. 重新追加我们需要的所有自定义包（包括 LuCI 和中文语言）
+        # 4. 重新追加所有自定义包（LuCI 和 NSS 驱动等）
         echo "CONFIG_PACKAGE_luci=y" >> .config
         echo "CONFIG_PACKAGE_luci-base=y" >> .config
         echo "CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" >> .config
         echo "CONFIG_LUCI_LANG_zh-cn=y" >> .config
+        # 禁用繁体中文，避免默认语言被覆盖
+        sed -i 's/^CONFIG_LUCI_LANG_zh_Hant=y$/# CONFIG_LUCI_LANG_zh_Hant is not set/' .config
 
-        # 5. 再把你的 JDCloud.config 和 General.config 中所有 =y 的选项追加回来（不会影响已存在的内容）
+        # 5. 追加 JDCloud.config 和 General.config 中所有 =y 的选项（NSS 驱动包等）
         grep "=y" $GITHUB_WORKSPACE/$CONFIG_FILE >> .config 2>/dev/null
         grep "=y" $GITHUB_WORKSPACE/$GENERAL_CONFIG_FILE >> .config 2>/dev/null
 
-        # 6. 双重确认语言包存在
+        # 6. 双重确认语言包和 NSS 包存在
         grep -q "^CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" .config || echo "CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" >> .config
         grep -q "^CONFIG_LUCI_LANG_zh-cn=y" .config || echo "CONFIG_LUCI_LANG_zh-cn=y" >> .config
+        # 确保 NSS 驱动模块被明确启用（即使配置文件已包含也不怕）
+        echo "CONFIG_PACKAGE_kmod-qca-nss-drv=y" >> .config
+        echo "CONFIG_PACKAGE_kmod-qca-nss-drv-64=y" >> .config
+        echo "CONFIG_PACKAGE_kmod-qca-nss-drv-ecm=y" >> .config
+        echo "CONFIG_PACKAGE_kmod-qca-nss-drv-vlan=y" >> .config
+        echo "CONFIG_PACKAGE_kmod-qca-nss-drv-crypto=y" >> .config
 
-        # 7. 开始下载源码（此时 .config 已完整，不会触发 menuconfig）
+        # 7. 下载源码（此时 .config 已完整，不会触发 menuconfig）
         make download -j$(nproc)
 
     - name: Set hostname to Openwrt
@@ -247,15 +254,20 @@ jobs:
         chmod +x files/etc/rc.local
         echo "✅ 已添加 rc.local 辅助清理脚本"
 
-    - name: Add custom NSS version LuCI page
+    - name: Add custom NSS version LuCI page and Chinese fix
       run: |
         cd $OPENWRT_PATH
+
+        # 新版 LuCI 兼容的 NSS 版本页面
         mkdir -p files/usr/lib/lua/luci/controller
         cat > files/usr/lib/lua/luci/controller/nss.lua << 'EOF'
-        module("luci.controller.nss", package.seeall)
-        function index()
+        local M = {}
+
+        function M.index()
             entry({"admin", "status", "nss_version"}, template("nss_version"), _("NSS 版本"), 60)
         end
+
+        return M
         EOF
 
         mkdir -p files/usr/lib/lua/luci/view
@@ -279,8 +291,24 @@ jobs:
         </pre>
         <%+footer%>
         EOF
-        echo "✅ NSS 版本页面已集成到固件 files 中"
-        
+
+        # 首次启动自动修复中文缓存
+        mkdir -p files/etc/uci-defaults
+        cat > files/etc/uci-defaults/99-fix-luci-zh << 'EOF'
+        #!/bin/sh
+        # 强制重建语言缓存，确保简体中文完整
+        rm -f /usr/lib/lua/luci/i18n/base.zh-cn.lmo
+        apk fix luci-i18n-base-zh-cn 2>/dev/null
+        uci set luci.main.lang='zh_cn'
+        uci commit luci
+        rm -rf /tmp/luci-indexcache /tmp/luci-modulecache
+        /etc/init.d/uhttpd restart
+        exit 0
+        EOF
+        chmod +x files/etc/uci-defaults/99-fix-luci-zh
+
+        echo "✅ NSS 版本页面与中文修复脚本已集成"
+
     - name: 设置软件源为清华镜像
       run: |
         cd "$OPENWRT_PATH"
