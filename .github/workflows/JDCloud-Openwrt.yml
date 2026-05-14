@@ -174,28 +174,38 @@ jobs:
         cd $OPENWRT_PATH
         $GITHUB_WORKSPACE/$DIY_SCRIPT
 
-    - name: Download DL Package(下载软件包，强制写入中文支持)
+    - name: Download DL Package(生成完整配置并下载)
       run: |
         cd $OPENWRT_PATH
+
+        # 1. 合并你原有的配置文件
         cat $GITHUB_WORKSPACE/$CONFIG_FILE $GITHUB_WORKSPACE/$GENERAL_CONFIG_FILE > .config
 
-        # 强制写入中文语言支持（即使你的配置文件里有禁用项，也会被覆盖）
+        # 2. 确保平台定义存在（防止 defconfig 找不到目标）
+        echo "CONFIG_TARGET_qualcommax=y" >> .config
+        echo "CONFIG_TARGET_qualcommax_ipq60xx=y" >> .config
+        echo "CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_jdcloud_re-ss-01=y" >> .config
+
+        # 3. 运行 defconfig 生成针对该设备的完整默认配置（非交互，无终端问题）
+        #    注意：此步骤会清空所有自定义包，只保留默认必需项。
+        make defconfig
+
+        # 4. 重新追加我们需要的所有自定义包（包括 LuCI 和中文语言）
         echo "CONFIG_PACKAGE_luci=y" >> .config
         echo "CONFIG_PACKAGE_luci-base=y" >> .config
         echo "CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" >> .config
         echo "CONFIG_LUCI_LANG_zh-cn=y" >> .config
 
-        # 不再调用任何配置刷新工具，直接下载源码
-        make download -j$(nproc)
+        # 5. 再把你的 JDCloud.config 和 General.config 中所有 =y 的选项追加回来（不会影响已存在的内容）
+        grep "=y" $GITHUB_WORKSPACE/$CONFIG_FILE >> .config 2>/dev/null
+        grep "=y" $GITHUB_WORKSPACE/$GENERAL_CONFIG_FILE >> .config 2>/dev/null
 
-    - name: Fix config before compile(编译前再次加固配置)
-      run: |
-        cd $OPENWRT_PATH
-        # 确保语言包选项没有丢失
-        grep -q "^CONFIG_PACKAGE_luci=y" .config || echo "CONFIG_PACKAGE_luci=y" >> .config
+        # 6. 双重确认语言包存在
         grep -q "^CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" .config || echo "CONFIG_PACKAGE_luci-i18n-base-zh-cn=y" >> .config
         grep -q "^CONFIG_LUCI_LANG_zh-cn=y" .config || echo "CONFIG_LUCI_LANG_zh-cn=y" >> .config
-        echo "✅ 语言包配置已加固"
+
+        # 7. 开始下载源码（此时 .config 已完整，不会触发 menuconfig）
+        make download -j$(nproc)
 
     - name: Set hostname to Openwrt
       run: |
