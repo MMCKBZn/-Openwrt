@@ -1,0 +1,9 @@
+#!/bin/sh
+# 强制重装简体中文语言包以修复半中半英问题
+apk del luci-i18n-base-zh-cn 2>/dev/null
+rm -rf /tmp/luci-indexcache /tmp/luci-modulecache
+apk add luci-i18n-base-zh-cn
+uci set luci.main.lang='zh_cn'
+uci commit luci
+/etc/init.d/uhttpd restart
+exit 0
